@@ -1,0 +1,206 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Sorting Benchmark – Bubble vs Merge</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      background: #f5f7fa;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .wrap {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 32px;
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    canvas {
+      max-width: 100%;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      padding: 10px;
+    }
+
+    table {
+      border-collapse: collapse;
+      margin-top: 12px;
+      width: 100%;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      text-align: right;
+      transition: background 0.3s;
+    }
+
+    th {
+      background: #34495e;
+      color: #fff;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    td:first-child,
+    th:first-child {
+      text-align: left;
+    }
+
+    tr:hover td {
+      background: #ecf0f1;
+    }
+
+    section {
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+      transition: transform 0.3s;
+    }
+
+    section:hover {
+      transform: translateY(-5px);
+    }
+
+    p {
+      text-align: center;
+      font-size: 1.1rem;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Sorting Benchmark</h1>
+  <p>Same dataset, 3 trials, average times (ms) and comparisons.</p>
+
+  <div class="wrap">
+
+    <section>
+      <h2>Bubble Sort (O(n²))</h2>
+      <canvas id="bubbleChart"></canvas>
+      <div id="bubbleTable"></div>
+    </section>
+
+    <section>
+      <h2>Merge Sort (O(n log n))</h2>
+      <canvas id="mergeChart"></canvas>
+      <div id="mergeTable"></div>
+    </section>
+
+    <section>
+      <h2>Combined Times</h2>
+      <canvas id="combinedChart"></canvas>
+    </section>
+
+  </div>
+
+  <script>
+    const RESULTS = {
+      n: 3000,
+      trials: 3,
+      python: { bubble_ms: 275.838, bubble_comparisons: 4494672, merge_ms: 4.600, merge_comparisons: 30969 },
+      javascript: { bubble_ms: 5.839, bubble_comparisons: 4494672, merge_ms: 2.162, merge_comparisons: 30969 },
+      cpp: { bubble_ms: 0.001, bubble_comparisons: 0, merge_ms: 0.000, merge_comparisons: 0 },
+      csharp: { bubble_ms: 29.610, bubble_comparisons: 4494672, merge_ms: 1.240, merge_comparisons: 30969 },
+    };
+
+    function makeTable(containerId, languages, times, comps) {
+      const el = document.getElementById(containerId);
+      const rows = languages.map((lang, i) =>
+        `<tr><td>${lang}</td><td>${times[i].toFixed(3)}</td><td>${comps[i].toLocaleString()}</td></tr>`).join("");
+      el.innerHTML = `<table>
+        <thead><tr><th>Language</th><th>Avg Time (ms)</th><th>Avg Comparisons</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function mkChart(canvasId, labels, timeData, compData, title) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Avg Time (ms)',
+              data: timeData,
+              backgroundColor: 'rgba(52, 152, 219, 0.7)',
+              borderColor: 'rgba(52, 152, 219, 1)',
+              borderWidth: 1,
+              yAxisID: 'y',
+              borderRadius: 5
+            },
+            {
+              label: 'Avg Comparisons',
+              data: compData,
+              type: 'line',
+              borderColor: 'rgba(231, 76, 60, 1)',
+              backgroundColor: 'rgba(231, 76, 60, 0.2)',
+              yAxisID: 'y1',
+              tension: 0.3,
+              pointRadius: 5
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: { title: { display: true, text: title, font: { size: 18 } } },
+          interaction: { mode: 'index', intersect: false },
+          scales: {
+            y: { type: 'linear', position: 'left', title: { display: true, text: 'ms (lower is better)' } },
+            y1: { type: 'linear', position: 'right', title: { display: true, text: '# comparisons' }, grid: { drawOnChartArea: false } }
+          }
+        }
+      });
+    }
+
+    const languages = Object.keys(RESULTS).filter(k => !['n', 'trials'].includes(k));
+    const bubbleTimes = languages.map(l => RESULTS[l].bubble_ms);
+    const bubbleComps = languages.map(l => RESULTS[l].bubble_comparisons);
+    const mergeTimes = languages.map(l => RESULTS[l].merge_ms);
+    const mergeComps = languages.map(l => RESULTS[l].merge_comparisons);
+
+    mkChart('bubbleChart', languages, bubbleTimes, bubbleComps, `Bubble Sort (n=${RESULTS.n}, trials=${RESULTS.trials})`);
+    mkChart('mergeChart', languages, mergeTimes, mergeComps, `Merge Sort (n=${RESULTS.n}, trials=${RESULTS.trials})`);
+
+    const ctxC = document.getElementById('combinedChart').getContext('2d');
+    new Chart(ctxC, {
+      type: 'bar',
+      data: {
+        labels: languages,
+        datasets: [
+          { label: 'Bubble (ms)', data: bubbleTimes, backgroundColor: 'rgba(52, 152, 219, 0.7)', borderRadius: 5 },
+          { label: 'Merge (ms)', data: mergeTimes, backgroundColor: 'rgba(46, 204, 113, 0.7)', borderRadius: 5 }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Combined Times (lower is better)', font: { size: 18 } } },
+        scales: { y: { title: { display: true, text: 'ms' } } }
+      }
+    });
+
+    makeTable('bubbleTable', languages, bubbleTimes, bubbleComps);
+    makeTable('mergeTable', languages, mergeTimes, mergeComps);
+  </script>
+</body>
+
+</html>
